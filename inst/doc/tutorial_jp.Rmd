@@ -107,8 +107,7 @@ res_KScan <- ELEFAN(synLFQ7a, Linf_fix = res_PW$Linf_est,
 res_KScan$par; res_KScan$Rn_max
 ```
 
-しかしこの手法は、よりあてはまりが良いかもしれない他の$L_{inf}$とKの組み合わせを網羅的に探索することはできない。
-This method, however, does not allow to test if different combinations of $L_{inf}$ and K might result in a better fit. RSA with a range around the $L_{inf}$ estimate from the Powell-Wetherall method can be used to check different combinations. Alternatively, the maximum length in the data or the maxmimum length class^[or average of the several largest lengths or length classes] might be used as an reference for the search space of $L_{inf}$ [@Taylor1958; @Beverton1963]. For this data set we chose a conservative range of the estimate from the Powell-Wetherall method plus/minus 10 cm. Any range can be chosen, while a larger search space increases computing time but gives a better overview of the score over a wide range of $L_{inf}$ and K combinations. A K range from 0.01 to 2 is relatively wide and should generally be sufficient.
+しかしこの手法は、よりあてはまりが良いかもしれない他の$L_{inf}$とKの組み合わせを網羅的に探索することはできない。一方で、RSAを使うと、Powell-Wetherall手法を使って特定された$L_{inf}$とKの範囲の中でよりあてはまりが良い組み合わせをテストすることができる。または、データのなかの最大体長・最大体長区分・ある範囲における最大体長の平均値などを$L_{inf}$の探索範囲として利用することもできる[@Taylor1958; @Beverton1963]。このデータ・セットでは、Powell-Wetherall法で推定された値プラスマイナス10cmを$L_{inf}$がありそうなだいたいの範囲として設定している。実際にはどんな範囲も指定できるが、範囲が広すぎると計算時間がその分かかってしまう。ただ、広い範囲を指定するとそれだけ広範囲に探索できるので視野は広がる。Kの範囲としては一般的に0.01から2くらいであれば十分で、一般的にも重要であろう。
 
 ```{r Figure 3, fig.width=8, eval = FALSE}
 # Response surface analyss
@@ -120,7 +119,8 @@ res_RSA <- ELEFAN(synLFQ7a, Linf_range = seq(119,139,1), MA = 5,
 res_RSA$par; res_RSA$Rn_max
 ```
 
-It is generally not recommendable to settle with the first estimate from RSA, as the method might find many local optima with close score values, but returns only the estimates associated with the highest score value. I recommend analysing several local maxima of the score function with a finer resolution for both parameters and compare the calculated score values and fit graphically. For this data, this automated procedure (code below) returns the highest score value (0.781) for the parameters $L_{inf}$ = 122.2, K = 0.21, and $t_{anchor}$ = 0.38 (more information on $t_{anchor}$ further down).
+一般的に、RSAによる最初の結果だけをそのまま信じて使うのは推奨されない。というのは、推定値が局所解に陥ってしまっている可能性もあるためである。局所解に陥っていないか確認するため、より細かいパラメータのスケールで再度解析したり、結果をグラフ化してみたりすることをおすすめする。このデータ・セットでは、いかに示す自動化されたコードにおいては、最も高いスコア値は0.781となり、そのときのパラメータは
+$L_{inf}$ = 122.2, K = 0.21, $t_{anchor}$ = 0.38となった。
 
 ```{r, eval = FALSE, echo=TRUE, include=TRUE}
 # find 3 highest score values
@@ -145,10 +145,11 @@ for(i in 1:3){
 results <- do.call(rbind, res_loop)
 ```
 
-Note that RSA does not allow to optimise over the parameters C and $t_s$ of the seasonalised VBGF (soVBGF). It only allows to compare the score of ELEFAN runs with manually fixed C and $t_s$ values. In contrast, the newly implemented ELEFAN method `ELEFAN_SA` using a simulated annealing algorithm [@Xiang2013] and `ELEFAN_GA` using genetic algorithms allow for the optimisation of the soVBGF [@Taylor2016]. The optimisation procedure in the simulated annealing algorithm gradually reduces the stochasticity of the search process as a function of the decreasing "temperature" value, which describes the probability of accepting worse conditions. In reference to the results of the Powell-Wetherall plot a second search within the range of `r {round(res_PW$Linf_est)}` ± 10 cm for $L_{inf}$ is conducted. The search space of K is limted by 0.01 and 1. 
+RSAは季節的な成長式(seasonalised VBGF (soVBGF))におけるパラメータ（C、$t_s$）を自動的に推定してくれないのでご注意を。もし推定したい場合にはCや$t_s$を固定パラメータとして設定した場合に得られるスコアを比較してCと$t_s$を求めることになる。
+	しかし、新しく実装されたELAFAN手法`ELEFAN_SA`（simulated annealingアルゴリズムを利用するもの, [@Xiang2013]）や`ELEFAN_GA`(遺伝的アルゴリズムを使うもの, [@Taylor2016])ではsoVBGFのパラメータも同時に最適化することができる。simulated annealingを用いた最適化手法では、探索プロセスにおける確率性を徐々に減らしていく手法で、より悪い状態を受け入れる確率によって表現されている？？。Powell-Wetherall手法からの結果をもとに、$L_{inf}$の範囲として`r {round(res_PW$Linf_est)}` ± 10 cmを指定し、もう一度パラメータの最適化をおこなった。このときのKの範囲は0.01から1とした. 
 
-```{r Figure 4,  fig.height=5, fig.width=5, eval=TRUE, results="hide", fig.cap="Score graph of the ELEFAN method with simulated annealing. Green dots indicate the runnning minimum value of the cost function, while blue dots indicate the mean score of each iteration. The red line shows the decline of the 'temperature' value, which describes the probability of accepting worse solutions as the parameter space is explored."}
-# run ELEFAN with simulated annealing
+```{r Figure 4,  fig.height=5, fig.width=5, eval=TRUE, results="hide", fig.cap="simulated annealingを用いたときのELEFAN手法におけるスコアグラフ。緑の点はコスト関数における最小値、青は個々の繰り返しにおける平均値。赤のラインは'temperature'（悪い状態を受け入れる確率）の値が徐々に下がっていることを示す"}
+# simulated annealingをつかったELEFANの実行
 res_SA <- ELEFAN_SA(synLFQ7a, SA_time = 60*0.5, SA_temp = 6e5,
                     MA = 5, seasonalised = TRUE, addl.sqrt = FALSE,
                     init_par = list(Linf = 129, K = 0.5, t_anchor = 0.5, C=0.5, ts = 0.5),
@@ -158,7 +159,7 @@ res_SA <- ELEFAN_SA(synLFQ7a, SA_time = 60*0.5, SA_temp = 6e5,
 res_SA$par; res_SA$Rn_max
 ```
 
-Note that the computing time can be controlled with the argument "SA_time" and the results might change when increasing the time, in case the stable optimum of the objective function was not yet reached^[Stable optimum is indicated by overlapping blue and green dots in the score graph.]. Due to the limitations of the vignette format the computation time was set to 0.5 minutes, which results already in acceptable results of $L_{inf}$ = `r {round(res_SA$par$Linf,2)}`, K = `r {round(res_SA$par$K,2)}`, $t_{anchor}$ = `r {round(res_SA$par$t_anchor,2)}`, C = `r {round(res_SA$par$C,2)}`, and $t_s$ = `r {round(res_SA$par$ts,2)}` with a score value ($Rn_{max}$) of `r {round(res_SA$Rn_max,2)}`. I recommend to increase 'SA_time' to 3 - 5 minutes to increase chances of finding the stable optimum. The jack knife technique allows to estimate a confidence interval around the parameters of the soVBGF [@Quenouille1956; @Tukey1958; @Tukey1986]. This can be automated in R with following code: 
+	計算時間は"SA_time"で調整でき、この値を大きくすることによって結果の値が変わるかもしれない。そのようなときには、まだ目的関数が安定な最適値に達していないことを示している（スコアグラフで、青と緑の点がオーバーラップすると安定な最適値に達したことを示す）。ここではチュートリアルとしての計算時間を短縮するために0.5秒に設定しているが、この結果でも十分に受け入れられる結果が得られた： $L_{inf}$ = `r {round(res_SA$par$Linf,2)}`, K = `r {round(res_SA$par$K,2)}`, $t_{anchor}$ = `r {round(res_SA$par$t_anchor,2)}`, C = `r {round(res_SA$par$C,2)}`, and $t_s$ = `r {round(res_SA$par$ts,2)}` with a score value ($Rn_{max}$) of `r {round(res_SA$Rn_max,2)}`. 一般には安定した解を得るには'SA_time'を3 - 5秒に増やすことをおすすめする. soVBGFで推定されたパラメータの信頼区間を推定するにはジャックナイフ手法を用いる [@Quenouille1956; @Tukey1958; @Tukey1986]. これは次のコードで自動的に実行できる：
 
 ```{r, eval = FALSE, echo = TRUE}
 JK <- vector("list", length(synLFQ7a$dates))
